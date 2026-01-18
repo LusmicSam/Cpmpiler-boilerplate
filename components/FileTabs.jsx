@@ -27,9 +27,29 @@ export default function FileTabs({
     };
 
     const saveEditing = () => {
-        if (editingId && editName.trim()) {
-            onRenameFile(editingId, editName.trim());
+        if (!editingId || !editName.trim()) {
+            setEditingId(null);
+            return;
         }
+
+        const validExtensions = ['js', 'py', 'cpp', 'java', 'c'];
+
+        // Check if file has an extension
+        const parts = editName.trim().split('.');
+        if (parts.length < 2) {
+            alert("Please include a valid file extension (.js, .py, .cpp, .java, .c)");
+            setEditingId(null); // Exit edit mode
+            return;
+        }
+
+        const extension = parts[parts.length - 1].toLowerCase();
+        if (!validExtensions.includes(extension)) {
+            alert(`Invalid extension. Use: ${validExtensions.map(e => '.' + e).join(', ')}`);
+            setEditingId(null); // Exit edit mode
+            return;
+        }
+
+        onRenameFile(editingId, editName.trim());
         setEditingId(null);
     };
 

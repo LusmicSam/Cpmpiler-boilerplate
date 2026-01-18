@@ -1,29 +1,57 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Navbar from "@/components/Navbar";
 import LanguageSelector from "@/components/LanguageSelector";
 import EditorComponent from "@/components/Editor";
 import OutputPanel from "@/components/OutputPanel";
 import FileTabs from "@/components/FileTabs";
 import FileNamePopup from "@/components/FileNamePopup";
-import { Play, Download, Plus, FileDown, FolderDown } from "lucide-react";
+import { Play, Download, Plus, FileDown, FolderDown, Sun, Moon } from "lucide-react";
 import JSZip from "jszip";
-import { getTemplateForFile, languageIds } from "@/utils/templates";
+import { getTemplateForFile, languageIds, languageTemplates } from "@/utils/templates";
 import { toBase64 } from "@/utils/base64";
 
 
 
 export default function Home() {
-  const [language, setLanguage] = useState("javascript");
+  // Theme state - initialize as 'dark' to match server render
+  const [theme, setTheme] = useState('dark');
+  const [mounted, setMounted] = useState(false);
 
-  // Multi mode state (Default and only mode now)
-  const [files, setFiles] = useState([
-    { id: "1", name: "main.js", content: "// Main entry point\nconsole.log('Hello from main!');", language: "javascript" }
-  ]);
-  const [activeFileId, setActiveFileId] = useState("1");
+  const [language, setLanguage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('language') || 'javascript';
+    }
+    return 'javascript';
+  });
+
+  // Multi mode state - Load from localStorage
+  const [files, setFiles] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('files');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    }
+    return [{ id: "1", name: "main.js", content: "// Main entry point\nconsole.log('Hello from main!');", language: "javascript" }];
+  });
+
+  const [activeFileId, setActiveFileId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('activeFileId') || "1";
+    }
+    return "1";
+  });
+
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-  const [stdin, setStdin] = useState("");
+
+  const [stdin, setStdin] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('stdin') || "";
+    }
+    return "";
+  });
+
   const [activeTab, setActiveTab] = useState("input");
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
 
@@ -34,6 +62,91 @@ export default function Home() {
 
   // Get current code
   const currentCode = files.find(f => f.id === activeFileId)?.content || "";
+
+  // Load theme from localStorage after mount to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+  }, []);
+
+  // Helper to get file extension from language
+  const getExtensionFromLanguage = (lang) => {
+    const extensionMap = {
+      javascript: 'js',
+      python: 'py',
+      cpp: 'cpp',
+      java: 'java',
+      c: 'c'
+    };
+    return extensionMap[lang] || 'txt';
+  };
+
+  // Handle language change - update active file name and content
+  useEffect(() => {
+    if (!activeFileId) return;
+
+    const activeFile = files.find(f => f.id === activeFileId);
+    if (!activeFile) return;
+
+    // Get the new extension
+    const newExtension = getExtensionFromLanguage(language);
+    const currentExtension = activeFile.name.split('.').pop();
+
+    // Only update if extension is different
+    if (currentExtension !== newExtension) {
+      const baseName = activeFile.name.split('.')[0];
+      const newName = `${baseName}.${newExtension}`;
+      const newTemplate = languageTemplates[language] || "";
+
+      setFiles(prev => prev.map(f =>
+        f.id === activeFileId
+          ? { ...f, name: newName, content: newTemplate, language: language }
+          : f
+      ));
+    }
+  }, [language]);
+
+  // Save to localStorage whenever files change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('files', JSON.stringify(files));
+    }
+  }, [files]);
+
+  // Save active file ID
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('activeFileId', activeFileId);
+    }
+  }, [activeFileId]);
+
+  // Save stdin
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('stdin', stdin);
+    }
+  }, [stdin]);
+
+  // Save language
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('language', language);
+    }
+  }, [language]);
+
+  // Apply theme to document
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      localStorage.setItem('theme', theme);
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -82,9 +195,46 @@ export default function Home() {
   };
 
   const handleRenameFile = (id, newName) => {
-    setFiles(prev => prev.map(f =>
-      f.id === id ? { ...f, name: newName } : f
-    ));
+    const file = files.find(f => f.id === id);
+    if (!file) return;
+
+    const oldExtension = file.name.split('.').pop()?.toLowerCase();
+    const newExtension = newName.split('.').pop()?.toLowerCase();
+
+    // If extension changed, update template and language
+    if (oldExtension !== newExtension) {
+      // Map extension to language
+      const extensionToLanguage = {
+        'js': 'javascript',
+        'py': 'python',
+        'cpp': 'cpp',
+        'java': 'java',
+        'c': 'c'
+      };
+
+      const newLang = extensionToLanguage[newExtension];
+
+      if (newLang) {
+        // Update language selector
+        setLanguage(newLang);
+
+        // Update file with new template
+        const newTemplate = languageTemplates[newLang] || "";
+        setFiles(prev => prev.map(f =>
+          f.id === id ? { ...f, name: newName, content: newTemplate, language: newLang } : f
+        ));
+      } else {
+        // Just rename if extension not recognized
+        setFiles(prev => prev.map(f =>
+          f.id === id ? { ...f, name: newName } : f
+        ));
+      }
+    } else {
+      // Just rename if extension didn't change
+      setFiles(prev => prev.map(f =>
+        f.id === id ? { ...f, name: newName } : f
+      ));
+    }
   };
 
   const handleClear = () => {
@@ -150,7 +300,7 @@ export default function Home() {
         languageId: languageIds[language] || 63 // Default to JS if not found
       };
 
-      const response = await fetch("https://g6y8h3p2kz.theeducode.com/student/compile-external", {
+      const response = await fetch("http://educode-alb-public-23525038.ap-south-1.elb.amazonaws.com/student/compile-external", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -195,18 +345,26 @@ export default function Home() {
 
   return (
     <div className="h-screen bg-background text-foreground flex flex-col font-sans overflow-hidden">
-      
-
       <main className="flex-1 flex flex-col p-6 gap-6 min-h-0">
         {/* Top Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0">
-          <button
-            onClick={() => setIsPopupOpen(true)}
-            className="bg-secondary hover:bg-secondary/80 text-secondary-foreground px-4 py-2 rounded flex items-center gap-2 text-sm font-medium transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New File
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsPopupOpen(true)}
+              className="bg-secondary hover:bg-secondary/80 text-secondary-foreground px-4 py-2 rounded flex items-center gap-2 text-sm font-medium transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New File
+            </button>
+
+            <button
+              onClick={toggleTheme}
+              className="bg-card hover:bg-muted border border-border px-3 py-2 rounded flex items-center gap-2 text-sm font-medium transition-colors"
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+          </div>
 
           <div className="flex items-center gap-4 w-full sm:w-auto">
             <LanguageSelector language={language} setLanguage={setLanguage} />
@@ -258,22 +416,29 @@ export default function Home() {
           <div className="lg:col-span-2 flex flex-col gap-4 h-full min-h-0">
             <div className="flex-1 min-h-0 relative">
               <div className="absolute inset-0">
-                <EditorComponent
-                  language={language}
-                  code={currentCode}
-                  setCode={handleCodeChange}
-                  onEditorMount={(editor) => editorRef.current = editor}
-                  headerContent={
-                    <FileTabs
-                      files={files}
-                      activeFileId={activeFileId}
-                      onTabClick={setActiveFileId}
-                      onDeleteFile={handleDeleteFile}
-                      onRenameFile={handleRenameFile}
-                      onClear={handleClear}
-                    />
-                  }
-                />
+                {mounted ? (
+                  <EditorComponent
+                    language={language}
+                    code={currentCode}
+                    setCode={handleCodeChange}
+                    theme={theme}
+                    onEditorMount={(editor) => editorRef.current = editor}
+                    headerContent={
+                      <FileTabs
+                        files={files}
+                        activeFileId={activeFileId}
+                        onTabClick={setActiveFileId}
+                        onDeleteFile={handleDeleteFile}
+                        onRenameFile={handleRenameFile}
+                        onClear={handleClear}
+                      />
+                    }
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-card border border-border rounded-lg">
+                    <div className="text-muted-foreground">Loading editor...</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

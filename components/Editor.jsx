@@ -9,7 +9,7 @@ export default function EditorComponent({
     language,
     code,
     setCode,
-    theme = "vs-dark",
+    theme = "dark",
     headerContent,
     onEditorMount
 }) {
@@ -19,16 +19,27 @@ export default function EditorComponent({
         editorRef.current = editor;
         if (onEditorMount) onEditorMount(editor);
 
-        // You can configure the editor here
+        // Define custom themes
         monaco.editor.defineTheme('custom-dark', {
             base: 'vs-dark',
             inherit: true,
             rules: [],
             colors: {
-                'editor.background': '#0f172a', // Match our background
+                'editor.background': '#0f172a',
             }
         });
-        monaco.editor.setTheme('custom-dark');
+
+        monaco.editor.defineTheme('custom-light', {
+            base: 'vs',
+            inherit: true,
+            rules: [],
+            colors: {
+                'editor.background': '#ffffff',
+            }
+        });
+
+        // Set theme based on prop
+        monaco.editor.setTheme(theme === 'dark' ? 'custom-dark' : 'custom-light');
     };
 
     return (
@@ -49,7 +60,7 @@ export default function EditorComponent({
                 value={code}
                 onChange={(value) => setCode(value || "")}
                 onMount={handleEditorDidMount}
-                theme="vs-dark" // We'll override this in onMount
+                theme={theme === 'dark' ? 'custom-dark' : 'custom-light'}
                 options={{
                     minimap: { enabled: true },
                     fontSize: 14,
