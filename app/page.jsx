@@ -300,7 +300,7 @@ export default function Home() {
         languageId: languageIds[language] || 63 // Default to JS if not found
       };
 
-      const response = await fetch("http://educode-alb-public-23525038.ap-south-1.elb.amazonaws.com/student/compile-external", {
+      const response = await fetch("/api/compile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
