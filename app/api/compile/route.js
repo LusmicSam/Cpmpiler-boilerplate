@@ -3,7 +3,7 @@ export async function POST(request) {
         const body = await request.json();
 
         const response = await fetch(
-            "http://educode-alb-public-23525038.ap-south-1.elb.amazonaws.com/student/compile-external",
+            "https://g6y8h3p2k0.theeducode.com/student/compile-external",
             {
                 method: "POST",
                 headers: {
