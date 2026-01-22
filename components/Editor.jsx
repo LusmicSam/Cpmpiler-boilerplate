@@ -46,6 +46,7 @@ export default function EditorComponent({
             rules: [],
             colors: {
                 'editor.background': '#0f172a', // Matches Tailwind slate-900 or card bg
+                'editor.selectionBackground': '#3b82f660', // Visible selection color (increased opacity)
             }
         });
 
@@ -55,6 +56,7 @@ export default function EditorComponent({
             rules: [],
             colors: {
                 'editor.background': '#ffffff',
+                'editor.selectionBackground': '#bae6fdaa', // Visible selection color (light blue, higher opacity)
             }
         });
 

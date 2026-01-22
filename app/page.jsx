@@ -6,6 +6,7 @@ import EditorComponent from "@/components/Editor";
 import OutputPanel from "@/components/OutputPanel";
 import FileTabs from "@/components/FileTabs";
 import FileNamePopup from "@/components/FileNamePopup";
+import LanguageConfirmPopup from "@/components/LanguageConfirmPopup";
 import { Play, Download, Plus, FileDown, FolderDown, Sun, Moon, History, Share2 } from "lucide-react";
 import JSZip from "jszip";
 import LZString from "lz-string";
@@ -44,6 +45,8 @@ export default function Home() {
 
   // UI States
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [showLanguageConfirm, setShowLanguageConfirm] = useState(false);
+  const [pendingLanguage, setPendingLanguage] = useState(null);
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [stdin, setStdin] = useState("");
@@ -122,31 +125,8 @@ export default function Home() {
 
   }, []);
 
-  useEffect(() => {
-    if (!activeFileId) return;
-    const activeFile = files.find(f => f.id === activeFileId);
-    if (!activeFile) return;
+  // Removed destructive useEffect that overwrites code on language switch
 
-    const getExtensionFromLanguage = (lang) => {
-      const extensionMap = { javascript: 'js', python: 'py', cpp: 'cpp', java: 'java', c: 'c' };
-      return extensionMap[lang] || 'txt';
-    };
-
-    const newExtension = getExtensionFromLanguage(language);
-    const currentExtension = activeFile.name.split('.').pop();
-
-    if (currentExtension !== newExtension) {
-      const baseName = activeFile.name.split('.')[0];
-      const newName = `${baseName}.${newExtension}`;
-      const newTemplate = languageTemplates[language] || "";
-
-      setFiles(prev => prev.map(f =>
-        f.id === activeFileId
-          ? { ...f, name: newName, content: newTemplate, language: language }
-          : f
-      ));
-    }
-  }, [language, activeFileId]);
 
   // Persistence
   useEffect(() => { if (typeof window !== 'undefined') localStorage.setItem('files', JSON.stringify(files)); }, [files]);
@@ -182,6 +162,72 @@ export default function Home() {
   // ==========================================
 
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+
+  /**
+   * Safe file switching. 
+   * Updates language to match the selected file's language.
+   */
+  const handleFileSwitch = (newFileId) => {
+    setActiveFileId(newFileId);
+    const file = files.find(f => f.id === newFileId);
+    if (file) {
+      setLanguage(file.language || 'javascript');
+    }
+  };
+
+  /**
+   * Safe language switching.
+   * Checks for content before overwriting.
+   */
+  const handleLanguageChange = (newLang) => {
+    const activeFile = files.find(f => f.id === activeFileId);
+    if (!activeFile) return;
+
+    // Check if file is empty or just has boilerplate
+    const currentBoilerplate = languageTemplates[activeFile.language || 'javascript'];
+    const hasContent = activeFile.content.trim() !== "" && activeFile.content.trim() !== currentBoilerplate?.trim();
+
+    if (hasContent) {
+      setPendingLanguage(newLang);
+      setShowLanguageConfirm(true);
+    } else {
+      // Safe to auto-switch
+      executeLanguageSwitch(newLang, 'RESET');
+    }
+  };
+
+  /**
+   * Executes the language switch logic
+   * @param {string} newLang - Target language
+   * @param {string} action - 'KEEP' or 'RESET'
+   */
+  const executeLanguageSwitch = (newLang, action) => {
+    setLanguage(newLang);
+    const extensionMap = { javascript: 'js', python: 'py', cpp: 'cpp', java: 'java', c: 'c' };
+    const newExtension = extensionMap[newLang] || 'txt';
+    const newTemplate = languageTemplates[newLang] || "";
+
+    setFiles(prev => prev.map(f => {
+      if (f.id === activeFileId) {
+        const baseName = f.name.split('.')[0];
+        return {
+          ...f,
+          name: `${baseName}.${newExtension}`,
+          language: newLang,
+          content: action === 'RESET' ? newTemplate : f.content
+        };
+      }
+      return f;
+    }));
+  };
+
+  const confirmLanguageSwitch = (action) => {
+    if (pendingLanguage) {
+      executeLanguageSwitch(pendingLanguage, action);
+    }
+    setShowLanguageConfirm(false);
+    setPendingLanguage(null);
+  };
 
   const handleCodeChange = (newCode) => {
     setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, content: newCode } : f));
@@ -411,7 +457,7 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-4 w-full sm:w-auto">
-            <LanguageSelector language={language} setLanguage={setLanguage} />
+            <LanguageSelector language={language} setLanguage={handleLanguageChange} />
 
             <button
               onClick={handleRun}
@@ -495,7 +541,7 @@ export default function Home() {
                       <FileTabs
                         files={files}
                         activeFileId={activeFileId}
-                        onTabClick={setActiveFileId}
+                        onTabClick={handleFileSwitch}
                         onDeleteFile={handleDeleteFile}
                         onRenameFile={handleRenameFile}
                         onClear={handleClear}
@@ -529,6 +575,13 @@ export default function Home() {
         isOpen={isPopupOpen}
         onClose={() => setIsPopupOpen(false)}
         onCreate={handleCreateFile}
+      />
+
+      <LanguageConfirmPopup
+        isOpen={showLanguageConfirm}
+        onClose={() => setShowLanguageConfirm(false)}
+        onConfirm={confirmLanguageSwitch}
+        targetLanguage={pendingLanguage}
       />
     </div>
   );

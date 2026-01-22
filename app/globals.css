@@ -51,19 +51,24 @@ body {
 
 /* Prevent Monaco editor white flash */
 .monaco-editor,
-.monaco-editor .overflow-guard,
-.monaco-editor .view-lines,
-.monaco-editor .margin,
 .monaco-editor .monaco-editor-background,
 .monaco-editor .inputarea.ime-input {
   background-color: #0f172a !important;
 }
 
 :root:not(.dark) .monaco-editor,
-:root:not(.dark) .monaco-editor .overflow-guard,
-:root:not(.dark) .monaco-editor .view-lines,
-:root:not(.dark) .monaco-editor .margin,
 :root:not(.dark) .monaco-editor .monaco-editor-background,
 :root:not(.dark) .monaco-editor .inputarea.ime-input {
   background-color: #ffffff !important;
+}
+
+/* Force Selection Visibility */
+.monaco-editor .selected-text {
+  background-color: rgba(59, 130, 246, 0.5) !important;
+  /* Blue selection */
+}
+
+:root:not(.dark) .monaco-editor .selected-text {
+  background-color: rgba(186, 230, 253, 0.8) !important;
+  /* Light blue selection */
 }
