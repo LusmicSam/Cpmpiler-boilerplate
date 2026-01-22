@@ -1,8 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 import { X, RotateCcw } from "lucide-react";
 
-
-
+/**
+ * FileTabs Component
+ * 
+ * Displays a tab bar for the open files.
+ * Supports switching active files, renaming (double-click), deleting, and clearing code.
+ * 
+ * @component
+ * @param {Object} props
+ * @param {Array<Object>} props.files - List of open file objects.
+ * @param {string} props.activeFileId - ID of the currently active file.
+ * @param {function(string): void} props.onTabClick - Callback to set active file.
+ * @param {function(string): void} props.onDeleteFile - Callback to delete a file.
+ * @param {function(string, string): void} props.onRenameFile - Callback to rename a file.
+ * @param {function(): void} props.onClear - Callback to clear the content of the active file.
+ */
 export default function FileTabs({
     files,
     activeFileId,
@@ -15,17 +28,26 @@ export default function FileTabs({
     const [editName, setEditName] = useState("");
     const inputRef = useRef(null);
 
+    // Focus input when editing starts
     useEffect(() => {
         if (editingId && inputRef.current) {
             inputRef.current.focus();
         }
     }, [editingId]);
 
+    /**
+     * Enters edit mode for a file name.
+     * @param {Object} file - The file object to rename.
+     */
     const startEditing = (file) => {
         setEditingId(file.id);
         setEditName(file.name);
     };
 
+    /**
+     * Saves the edited file name.
+     * Validates the new name and extension.
+     */
     const saveEditing = () => {
         if (!editingId || !editName.trim()) {
             setEditingId(null);
@@ -63,6 +85,7 @@ export default function FileTabs({
 
     return (
         <div className="flex items-center justify-between w-full gap-2">
+            {/* Scrollable Tabs Container */}
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1">
                 {files.map((file) => (
                     <div
@@ -106,6 +129,7 @@ export default function FileTabs({
                 ))}
             </div>
 
+            {/* Clear Button */}
             <button
                 onClick={onClear}
                 className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs px-2 py-1 hover:bg-muted rounded transition-colors shrink-0"

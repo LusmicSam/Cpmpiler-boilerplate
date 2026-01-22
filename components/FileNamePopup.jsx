@@ -3,14 +3,28 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 
-
-
+/**
+ * FileNamePopup Component
+ * 
+ * A modal dialog for creating new files.
+ * Validates the file name and extension before creation.
+ * 
+ * @component
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Whether the popup is visible.
+ * @param {function(): void} props.onClose - Callback to close the popup.
+ * @param {function(string): void} props.onCreate - Callback to create the file with the given name.
+ */
 export default function FileNamePopup({ isOpen, onClose, onCreate }) {
     const [fileName, setFileName] = useState("");
     const [error, setError] = useState("");
 
     const validExtensions = ['js', 'py', 'cpp', 'java', 'c'];
 
+    /**
+     * DOM handler for creating a file.
+     * Validates input and calls onCreate.
+     */
     const handleCreate = () => {
         if (!fileName.trim()) {
             setError("File name cannot be empty");
@@ -36,6 +50,9 @@ export default function FileNamePopup({ isOpen, onClose, onCreate }) {
         onClose();
     };
 
+    /**
+     * Resets state and closes the popup.
+     */
     const handleClose = () => {
         setFileName("");
         setError("");
