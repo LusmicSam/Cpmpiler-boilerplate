@@ -7,6 +7,7 @@ import OutputPanel from "@/components/OutputPanel";
 import FileTabs from "@/components/FileTabs";
 import FileNamePopup from "@/components/FileNamePopup";
 import LanguageConfirmPopup from "@/components/LanguageConfirmPopup";
+import ResetConfirmPopup from "@/components/ResetConfirmPopup";
 import { Play, Download, Plus, FileDown, FolderDown, Sun, Moon, History, Share2 } from "lucide-react";
 import JSZip from "jszip";
 import LZString from "lz-string";
@@ -46,6 +47,7 @@ export default function Home() {
   // UI States
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [showLanguageConfirm, setShowLanguageConfirm] = useState(false);
+  const [showResetPopup, setShowResetPopup] = useState(false);
   const [pendingLanguage, setPendingLanguage] = useState(null);
   const [showDownloadOptions, setShowDownloadOptions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -227,6 +229,21 @@ export default function Home() {
     }
     setShowLanguageConfirm(false);
     setPendingLanguage(null);
+  };
+
+  const handleResetConfirm = (action) => {
+    const activeFile = files.find(f => f.id === activeFileId);
+    if (!activeFile) return;
+
+    let newContent = "";
+    if (action === 'BOILERPLATE') {
+      newContent = languageTemplates[activeFile.language || 'javascript'] || "";
+    } else if (action === 'CLEAR') {
+      newContent = "";
+    }
+
+    setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, content: newContent } : f));
+    setShowResetPopup(false);
   };
 
   const handleCodeChange = (newCode) => {
@@ -537,6 +554,10 @@ export default function Home() {
                     setCode={handleCodeChange}
                     theme={theme}
                     onEditorMount={(editor) => editorRef.current = editor}
+                    onReset={() => {
+                      console.log("onReset callback triggered in Home");
+                      setShowResetPopup(true);
+                    }}
                     headerContent={
                       <FileTabs
                         files={files}
@@ -582,6 +603,12 @@ export default function Home() {
         onClose={() => setShowLanguageConfirm(false)}
         onConfirm={confirmLanguageSwitch}
         targetLanguage={pendingLanguage}
+      />
+
+      <ResetConfirmPopup
+        isOpen={showResetPopup}
+        onClose={() => setShowResetPopup(false)}
+        onConfirm={handleResetConfirm}
       />
     </div>
   );

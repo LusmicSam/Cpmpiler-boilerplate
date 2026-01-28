@@ -129,15 +129,7 @@ export default function FileTabs({
                 ))}
             </div>
 
-            {/* Clear Button */}
-            <button
-                onClick={onClear}
-                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs px-2 py-1 hover:bg-muted rounded transition-colors shrink-0"
-                title="Clear Code"
-            >
-                <RotateCcw className="w-3 h-3" />
-                Reset
-            </button>
+
         </div>
     );
 }
